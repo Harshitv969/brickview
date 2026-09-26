@@ -1,9 +1,9 @@
 # BrickView – Real Estate Analytics Platform
 
-An end-to-end real estate analytics project: synthetic data → normalized SQLite
-database (with foreign-key enforcement) → 30 business SQL queries → a
-multi-page Streamlit dashboard with global filters, charts, an interactive
-clustered map, and full type-safe CRUD.
+An end-to-end real estate analytics project: synthetic data → **EDA** →
+normalized **SQL** database (with foreign-key enforcement) → 30 business SQL
+queries → a multi-page **Streamlit** dashboard with global filters, charts, an
+interactive clustered map, and full type-safe CRUD.
 
 ## Project Structure
 
@@ -15,9 +15,14 @@ brickview/
 │   ├── agents_cleaned.json
 │   ├── sales_cleaned.csv
 │   └── buyers_cleaned.json
+├── eda/
+│   └── EDA.ipynb           # exploratory data analysis on the raw datasets
+├── sql/
+│   ├── schema.sql          # plain-SQL version of the normalized schema
+│   └── queries.sql         # all 30 business queries as a runnable .sql file
 ├── generate_data.py       # creates the 5 raw datasets (synthetic, seeded, ~3000 listings)
 ├── build_database.py      # cleans data + builds brickview.db (SQLite, FKs ON)
-├── sql_queries.py         # all 30 business SQL queries, organized by category
+├── sql_queries.py         # same 30 queries, as a Python dict feeding the Streamlit UI
 ├── db.py                  # shared DB connection helper (FK pragma, cached loaders)
 ├── filters.py             # shared sidebar filters (persist across pages via session_state)
 ├── Home.py                # entry point — run this with `streamlit run`
@@ -31,6 +36,21 @@ brickview/
 ├── requirements.txt
 └── README.md
 ```
+
+## Exploratory Data Analysis
+
+[`eda/EDA.ipynb`](eda/EDA.ipynb) checks the raw datasets before cleaning —
+shape and dtypes for each of the 5 sources, missing-value counts, price
+distribution, price by city/property type, area-vs-price and metro-distance-
+vs-price correlations, days-on-market distribution, and buyer/payment-mode
+splits — with a **Key Takeaways** section at the end calling out real findings
+(e.g. `Furnishing_Status` is missing for ~27% of listings, and 156 buyers who
+took a loan have no `Loan_Provider` recorded, which the current cleaning
+pipeline doesn't yet handle). This is what motivated the shape of the 30 SQL
+queries below.
+
+To re-run it: `pip install -r requirements-eda.txt` (adds matplotlib/seaborn/
+jupyter on top of the app's own dependencies), then `jupyter notebook eda/EDA.ipynb`.
 
 Streamlit auto-detects the `pages/` folder and turns it into the sidebar
 navigation — `Home.py` is the entry point (`streamlit run Home.py`).
@@ -75,6 +95,8 @@ Then open the local URL Streamlit prints (usually http://localhost:8501).
 4. **SQL Queries** – all 30 business questions from the brief, grouped into
    Property & Pricing, Sales & Market Performance, Agent Performance, and
    Buyer & Financing Behavior, each with the raw SQL and a live result table.
+   The same queries also live in [`sql/queries.sql`](sql/queries.sql) as a
+   plain, runnable SQL file (`sqlite3 brickview.db < sql/queries.sql`).
 5. **CRUD** – full Create / Read / Update / Delete for all 5 tables, with:
    - **proper type casting** (numbers as numbers, booleans as checkboxes,
      dates as date pickers — not raw strings),
@@ -100,7 +122,9 @@ buyers (Buyer_ID PK, Sale_ID FK -> sales)
 Views: v_listing_full, v_sales_full
 ```
 
-Indexes on all join columns (City, Agent_ID, Listing_ID, Sale_ID).
+Indexes on all join columns (City, Agent_ID, Listing_ID, Sale_ID). The same
+`CREATE TABLE`/`CREATE VIEW` statements are also in
+[`sql/schema.sql`](sql/schema.sql) as a plain SQL file.
 
 ## Why SQLite instead of MySQL
 
